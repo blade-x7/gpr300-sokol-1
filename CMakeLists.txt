@@ -25,6 +25,7 @@ include("extra/cmake/sokol.cmake")
 include("extra/cmake/stb.cmake")
 include("extra/cmake/ufbx.cmake")
 include("extra/cmake/gl3w.cmake")
+include("extra/cmake/imguizmo.cmake")
 
 # libraries
 include_directories(${THIRDPARTY_DIR})

@@ -6,10 +6,22 @@
 // batteries
 #include "batteries/opengl.h"
 
+#include "imguizmo/ImGuizmo.h"
+#include <glm/gtc/type_ptr.hpp>
+
+struct{
+    float alpha = 8.0f;
+}debug;
+
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    blinnphong = std::make_unique<ew::Shader>("assets/shaders/default.vs", "assets/shaders/default.fs");
+    blinnphong = std::make_unique<ew::Shader>("assets/shaders/default.vs", "assets/shaders/blinnphong.fs");
+
+    light = {
+        .color = {1.0f, 1.0f, 1.0f},
+        .position = {2.0f, 2.0f, 2.0f}
+    };
 }
 
 Scene::~Scene()
@@ -22,6 +34,8 @@ void Scene::Update(float dt)
 
     /* body */
 }
+
+glm::mat4 identity(1.0f);
 
 void Scene::Render(void)
 {
@@ -37,9 +51,13 @@ void Scene::Render(void)
     blinnphong->use();
 
     // scene matrices
-    blinnphong->setMat4("model", glm::mat4(1.0f));
+    blinnphong->setMat4("model", glm::mat4(1.0));
     blinnphong->setMat4("view_proj", view_proj);
-    blinnphong->setVec3("camera_position", camera.position);
+
+    blinnphong->setVec3("camera", camera.position);
+    blinnphong->setVec3("light.position", light.position);
+    blinnphong->setVec3("light.color", light.color);
+    blinnphong->setFloat("alpha", debug.alpha);
 
     // draw suzanne
     suzanne->draw();
@@ -47,12 +65,35 @@ void Scene::Render(void)
 
 void Scene::Debug(void)
 {
+    const auto proj = camera.Projection();
+    const auto view = camera.View();
+
+    ImGuizmo::BeginFrame();
+    ImGuizmo::SetDrawlist(ImGui::GetBackgroundDrawList());
+    ImGuizmo::SetRect(0, 0, ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
+    ImGuizmo::DrawGrid(&view[0][0], &proj[0][0], glm::value_ptr(identity), 10.0f);
+
+    auto light_matrix = glm::translate(glm::mat4(1.0f), light.position);
+    ImGuizmo::Manipulate(
+        &view[0][0], 
+        &proj[0][0],
+        ImGuizmo::OPERATION::TRANSLATE,
+        ImGuizmo::MODE::WORLD,
+        glm::value_ptr(light_matrix)
+    );
+
+    if (ImGuizmo::IsUsing()){
+        light.position = glm::vec3(light_matrix[3]);
+    }
+
     cameracontroller.Debug();
 
-    ImGui::Begin("Controlls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
     ImGui::Checkbox("Paused", &time.paused);
     ImGui::SliderFloat("Time Factor", &time.factor, 0.0f, 10.0f);
+    ImGui::SliderFloat("Alpha", &debug.alpha, 1.0f, 8.0f);
+    ImGui::ColorEdit3("Light Color", glm::value_ptr(light.color));
 
     /* build debug ui here */
 
