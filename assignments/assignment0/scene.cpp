@@ -13,6 +13,13 @@ struct{
     float alpha = 8.0f;
 }debug;
 
+struct{
+    float ambient = 1.0f;
+    float diffuse = 0.5f;
+    float specular = 0.5f;
+    float shiny = 128.0f;
+}material;
+
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");

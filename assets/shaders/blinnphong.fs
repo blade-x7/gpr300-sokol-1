@@ -35,7 +35,8 @@ vec3 blinnphong(vec3 normal, vec3 frag_pos, Light light) {
 
     //apply material
     float NdotL = max(dot(vs_normal, light_dir), 0.0);
-    float NdotH = pow(max(dot(vs_normal, half_dir), 0.0), alpha);
+    //shininess
+    float NdotH = pow(max(dot(vs_normal, half_dir), 0.0), material.shininess);
 
     vec3 diffuse = NdotL * material.diffuse;
 
