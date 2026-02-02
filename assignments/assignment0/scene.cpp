@@ -102,6 +102,8 @@ void Scene::Debug(void)
     ImGui::SliderFloat("Alpha", &debug.alpha, 1.0f, 8.0f);
     ImGui::ColorEdit3("Light Color", glm::value_ptr(light.color));
 
+    
+
     /* build debug ui here */
 
     ImGui::End();
