@@ -24,6 +24,7 @@ in vec2 vs_texcoord;
 uniform vec3 camera;
 uniform Light light;
 uniform Material material;
+uniform sampler2D texture0;
 
 vec3 blinnphong(vec3 normal, vec3 frag_pos, Light light) {
     // glsl: dot(vec3, vec3)
@@ -48,7 +49,7 @@ void main()
 {
     vec3 ambient = vec3(1.0);
     vec3 lighting = blinnphong(vs_normal, vs_position, light);
-    vec3 object_color = vs_normal * 0.5 + 0.5;
+    vec3 object_color = texture(texture0, vs_texcoord);
     vec3 final_color = object_color * lighting;
     FragColor = vec4(final_color, 1.0);
 }
