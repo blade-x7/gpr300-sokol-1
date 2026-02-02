@@ -8,16 +8,16 @@
 
 #include "imguizmo/ImGuizmo.h"
 #include <glm/gtc/type_ptr.hpp>
-
+/*
 struct{
     float alpha = 8.0f;
-}debug;
+}debug;*/
 
 struct{
     float ambient = 1.0f;
     float diffuse = 0.5f;
     float specular = 0.5f;
-    float shiny = 128.0f;
+    float shiny = 8.0f;
 }material;
 
 Scene::Scene()
@@ -64,7 +64,11 @@ void Scene::Render(void)
     blinnphong->setVec3("camera", camera.position);
     blinnphong->setVec3("light.position", light.position);
     blinnphong->setVec3("light.color", light.color);
-    blinnphong->setFloat("alpha", debug.alpha);
+
+    blinnphong->setFloat("material.ambient", material.ambient);
+    blinnphong->setFloat("material.diffuse", material.diffuse);
+    blinnphong->setFloat("material.specular", material.specular);
+    blinnphong->setFloat("material.shininess", material.shiny);
 
     // draw suzanne
     suzanne->draw();
@@ -99,10 +103,14 @@ void Scene::Debug(void)
 
     ImGui::Checkbox("Paused", &time.paused);
     ImGui::SliderFloat("Time Factor", &time.factor, 0.0f, 10.0f);
-    ImGui::SliderFloat("Alpha", &debug.alpha, 1.0f, 8.0f);
     ImGui::ColorEdit3("Light Color", glm::value_ptr(light.color));
 
-    
+    if (ImGui::CollapsingHeader("Material")){
+        ImGui::SliderFloat("Ambient", &material.ambient, 0.0f, 1.0f);
+        ImGui::SliderFloat("Diffuse", &material.diffuse, 0.0f, 1.0f);
+        ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
+        ImGui::SliderFloat("Shininess", &material.shiny, 0.5f, 10.0f);
+    }
 
     /* build debug ui here */
 

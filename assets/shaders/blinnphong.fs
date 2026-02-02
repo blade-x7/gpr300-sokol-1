@@ -24,7 +24,6 @@ in vec2 vs_texcoord;
 uniform vec3 camera;
 uniform Light light;
 uniform Material material;
-uniform float alpha;
 
 vec3 blinnphong(vec3 normal, vec3 frag_pos, Light light) {
     // glsl: dot(vec3, vec3)
@@ -38,16 +37,17 @@ vec3 blinnphong(vec3 normal, vec3 frag_pos, Light light) {
     //shininess
     float NdotH = pow(max(dot(normal, half_dir), 0.0), material.shininess);
     
-    
+    vec3 lightColor = (material.diffuse * NdotL + material.specular * NdotH) * light.color;
+    lightColor += material.ambient;
 
     vec3 finalBP = vec3(NdotL + NdotH);
-    return finalBP * light.color;
+    return finalBP * lightColor;
 }
 
 void main()
 {
     vec3 ambient = vec3(1.0);
-    vec3 lighting = blinnphong(vs_normal, vs_position, light) + material.ambient;
+    vec3 lighting = blinnphong(vs_normal, vs_position, light);
     vec3 object_color = vs_normal * 0.5 + 0.5;
     vec3 final_color = object_color * lighting;
     FragColor = vec4(final_color, 1.0);
