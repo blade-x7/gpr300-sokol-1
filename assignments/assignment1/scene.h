@@ -3,6 +3,7 @@
 // batteries
 #include "batteries/scene.h"
 #include "batteries/lights.h"
+#include "batteries/materials.h"
 
 // ew
 #include "ew/model.h"
@@ -25,4 +26,7 @@ class Scene final : public batteries::Scene
     std::unique_ptr<ew::Texture> texture;
 
     batteries::light_t light;
+
+    unsigned int fbo;
+    unsigned int fboTexture;
 };
