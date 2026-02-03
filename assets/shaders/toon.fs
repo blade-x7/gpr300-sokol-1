@@ -16,6 +16,11 @@ struct Material{
     float shininess;
 };
 
+struct Palette{
+    vec3 color1;
+    vec3 color2;
+};
+
 // varyings
 in vec3 vs_position;
 in vec3 vs_normal;
@@ -24,32 +29,30 @@ in vec2 vs_texcoord;
 uniform vec3 camera;
 uniform Light light;
 uniform Material material;
-uniform sampler2D texture0;
+uniform sampler2D zaToon;
+uniform Palette pal;
 
-vec3 blinnphong(vec3 normal, vec3 frag_pos, Light light) {
-    // glsl: dot(vec3, vec3)
+vec3 toonShading(vec3 normal, vec3 frag_pos, Light light) {
     vec3 view_dir = normalize(camera - frag_pos);
     vec3 light_dir = normalize(light.position - frag_pos);
     vec3 reflect_dir = reflect(light_dir, normal);
     vec3 half_dir = normalize(light_dir + view_dir);
 
     //apply material
-    float NdotL = max(dot(normal, light_dir), 0.0);
+    float NdotL = (dot(normal, light_dir) + 1.0) * 0.5;
     //shininess
     float NdotH = pow(max(dot(normal, half_dir), 0.0), material.shininess);
-    
-    vec3 lightColor = (material.diffuse * NdotL + material.specular * NdotH) * light.color;
-    lightColor += material.ambient;
 
-    vec3 finalBP = vec3(NdotL + NdotH);
-    return finalBP * lightColor;
+    vec3 gradient = texture(zaToon, vec2(NdotL, NdotL)).rgb;
+
+    vec3 lightColor = mix(pal.color2, pal.color1, gradient);
+
+    return lightColor;
 }
 
 void main()
 {
     vec3 ambient = vec3(1.0);
-    vec3 lighting = blinnphong(vs_normal, vs_position, light);
-    vec3 object_color = texture(texture0, vs_texcoord).rbg;
-    vec3 final_color = object_color * lighting;
-    FragColor = vec4(final_color, 1.0);
+    vec3 lighting = toonShading(vs_normal, vs_position, light);
+    FragColor = vec4(lighting, 1.0);
 }
