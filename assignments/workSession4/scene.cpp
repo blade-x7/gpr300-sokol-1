@@ -33,8 +33,8 @@ Scene::Scene()
     };
 
     palette = {
-        .color1 = {1.0f, 0.0f, 0.0f},
-        .color2 = {1.0f, 0.0f, 1.0f}
+        .color1 = {0.21f, 1.0f, 1.0f},
+        .color2 = {0.32f, 0.0f, 1.0f}
     };
 }
 
