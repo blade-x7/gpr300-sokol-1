@@ -54,7 +54,7 @@ struct{
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    toon = std::make_unique<ew::Shader>("assets/shaders/default.vs", "assets/shaders/toon.fs");
+    water = std::make_unique<ew::Shader>("assets/shaders/default.vs", "assets/shaders/toon.fs");
     //load texture
     texture = std::make_unique<ew::Texture>("assets/skull/ZAToon.png");
 
@@ -138,25 +138,25 @@ void Scene::Render(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture->getID());
 
-        toon->use();
+        water->use();
 
-        toon->setInt("zaToon", 0);
+        water->setInt("zaToon", 0);
 
         // scene matrices
-        toon->setMat4("model", glm::mat4(1.0));
-        toon->setMat4("view_proj", view_proj);
+        water->setMat4("model", glm::mat4(1.0));
+        water->setMat4("view_proj", view_proj);
 
-        toon->setVec3("camera", camera.position);
-        toon->setVec3("light.position", light.position);
-        toon->setVec3("light.color", light.color);
+        water->setVec3("camera", camera.position);
+        water->setVec3("light.position", light.position);
+        water->setVec3("light.color", light.color);
 
-        toon->setFloat("material.ambient", material.ambient);
-        toon->setFloat("material.diffuse", material.diffuse);
-        toon->setFloat("material.specular", material.specular);
-        toon->setFloat("material.shininess", material.shiny);
+        water->setFloat("material.ambient", material.ambient);
+        water->setFloat("material.diffuse", material.diffuse);
+        water->setFloat("material.specular", material.specular);
+        water->setFloat("material.shininess", material.shiny);
 
-        toon->setVec3("pal.color1", palette.color1);
-        toon->setVec3("pal.color2", palette.color2);
+        water->setVec3("pal.color1", palette.color1);
+        water->setVec3("pal.color2", palette.color2);
 
         // draw suzanne
         suzanne->draw();

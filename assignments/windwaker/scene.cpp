@@ -8,10 +8,12 @@
 
 #include "imguizmo/ImGuizmo.h"
 #include <glm/gtc/type_ptr.hpp>
-/*
+
+#include "ew/procGen.h"
+
 struct{
-    float alpha = 8.0f;
-}debug;*/
+    glm::vec3 waterColor{0.0f, 1.0f, 1.0f};
+}debug;
 
 struct{
     float ambient = 1.0f;
@@ -23,19 +25,21 @@ struct{
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    water = std::make_unique<ew::Shader>("assets/shaders/default.vs", "assets/shaders/toon.fs");
-    //load texture
-    texture = std::make_unique<ew::Texture>("assets/skull/ZAToon.png");
+    water = std::make_unique<ew::Shader>("assets/shaders/windwaker/water.vs", "assets/shaders/windwaker/water.fs");
+    
+    //load textures
+    water128 = std::make_unique<ew::Texture>("assets/textures/windwaker/water128.png");
+    water64 = std::make_unique<ew::Texture>("assets/textures/windwaker/water64.png");
+    water32 = std::make_unique<ew::Texture>("assets/textures/windwaker/water32.png");
+    water16 = std::make_unique<ew::Texture>("assets/textures/windwaker/water16.png");
+    water8 = std::make_unique<ew::Texture>("assets/textures/windwaker/water8.png");
 
     light = {
         .color = {1.0f, 1.0f, 1.0f},
         .position = {2.0f, 2.0f, 2.0f}
     };
 
-    palette = {
-        .color1 = {0.21f, 1.0f, 1.0f},
-        .color2 = {0.32f, 0.0f, 1.0f}
-    };
+    plane.load(ew::createPlane(100.0, 100.0, 10));
 }
 
 Scene::~Scene()
@@ -64,30 +68,22 @@ void Scene::Render(void)
 
     //textures!!
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture->getID());
+    glBindTexture(GL_TEXTURE_2D, water128->getID());
 
     water->use();
 
-    water->setInt("zaToon", 0);
+    water->setInt("texture0", 0);
 
     // scene matrices
     water->setMat4("model", glm::mat4(1.0));
     water->setMat4("view_proj", view_proj);
 
     water->setVec3("camera", camera.position);
-    water->setVec3("light.position", light.position);
-    water->setVec3("light.color", light.color);
+    water->setFloat("time", (float)time.absolute);
+    water->setVec3("waterColor", debug.waterColor);
 
-    water->setFloat("material.ambient", material.ambient);
-    water->setFloat("material.diffuse", material.diffuse);
-    water->setFloat("material.specular", material.specular);
-    water->setFloat("material.shininess", material.shiny);
-
-    water->setVec3("pal.color1", palette.color1);
-    water->setVec3("pal.color2", palette.color2);
-
-    // draw suzanne
-    suzanne->draw();
+    // draw plane
+    plane.draw();
 }
 
 void Scene::Debug(void)
@@ -120,6 +116,8 @@ void Scene::Debug(void)
     ImGui::Checkbox("Paused", &time.paused);
     ImGui::SliderFloat("Time Factor", &time.factor, 0.0f, 10.0f);
     ImGui::ColorEdit3("Light Color", glm::value_ptr(light.color));
+    ImGui::ColorEdit3("Water Color", glm::value_ptr(debug.waterColor));
+
 
     if (ImGui::CollapsingHeader("Material")){
         ImGui::SliderFloat("Ambient", &material.ambient, 0.0f, 1.0f);
@@ -127,10 +125,6 @@ void Scene::Debug(void)
         ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
         ImGui::SliderFloat("Shininess", &material.shiny, 0.5f, 10.0f);
     }
-
-    ImGui::SeparatorText("Palette");
-    ImGui::ColorEdit3("Color 1", &palette.color1.x);
-    ImGui::ColorEdit3("Color 2", &palette.color2.x);
 
     /* build debug ui here */
 
