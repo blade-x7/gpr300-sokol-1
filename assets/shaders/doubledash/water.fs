@@ -18,7 +18,7 @@ uniform vec3 camera;
 uniform float time;
 uniform vec3 waterColor;
 
-float scale = 1.0;
+float scale = 5.0;
 float speed = 0.1;
 
 void main()
@@ -33,7 +33,7 @@ void main()
     vec4 sample2 = texture(waveTex, uv * 1.2);
 
     //warp
-    vec2 warpUV = vs_texcoord * scale;
+    vec2 warpUV = vs_texcoord * 0.2;
     vec2 warpScroll = vec2(0.5, 0.5) * time;
     vec2 warp = texture(waveWarp, warpUV + warpScroll).xy;
 
@@ -42,7 +42,7 @@ void main()
     vec4 albedo = texture(waveTex, albedoUV + warp);
 
     //specular
-    vec2 specUV = vs_texcoord * scale;
+    vec2 specUV = vs_texcoord * 1.0;
     vec2 specScroll = vec2(0.5, 0.5) * time;
 
     vec3 specSample1 = texture(waveSpec, specUV + vec2(0.5, 0.5) * time).rgb;
