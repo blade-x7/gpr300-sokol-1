@@ -58,7 +58,7 @@ Scene::Scene()
     //load texture
     texture = std::make_unique<ew::Texture>("assets/skull/ZAToon.png");
 
-    postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/blur.fs");
+    postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/filmgrain.fs");
 
     light = {
         .color = {1.0f, 1.0f, 1.0f},
@@ -191,7 +191,7 @@ void Scene::Debug(void)
     ImGuizmo::BeginFrame();
     ImGuizmo::SetDrawlist(ImGui::GetBackgroundDrawList());
     ImGuizmo::SetRect(0, 0, ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
-    ImGuizmo::DrawGrid(&view[0][0], &proj[0][0], glm::value_ptr(identity), 10.0f);
+    //ImGuizmo::DrawGrid(&view[0][0], &proj[0][0], glm::value_ptr(identity), 10.0f); begone grid
 
     auto light_matrix = glm::translate(glm::mat4(1.0f), light.position);
     ImGuizmo::Manipulate(
