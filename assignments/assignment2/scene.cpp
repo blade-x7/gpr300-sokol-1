@@ -8,6 +8,7 @@
 
 #include "imguizmo/ImGuizmo.h"
 #include <glm/gtc/type_ptr.hpp>
+#include "ew/procGen.h"
 
 struct FullScreenQuad{
     GLuint vao;
@@ -51,49 +52,18 @@ struct{
     float shiny = 8.0f;
 } material;
 
-struct{
-    float blurStrength = 10.0;
-    float sharpenStrength = 1.0;
-    float edgeDetectStrength = 10.0;
-    int numPixels = 1024;
-    float grainAmount = 0.05;
-    float grainSize = 1.0;
-} effectVars;
+struct FrameBuffer{
+    GLuint depthFbo;
+    GLuint depth;
 
-Scene::Scene()
+    void Initialize()
+    {
+        
+    }
+} shadowBuffer;
+
+void Scene::CreateFrameBuffer()
 {
-    suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    toon = std::make_unique<ew::Shader>("assets/shaders/default.vs", "assets/shaders/toon.fs");
-    //load texture
-    texture = std::make_unique<ew::Texture>("assets/skull/ZAToon.png");
-
-    effectIndex = 0;
-
-    effects.push_back("none");
-    effects.push_back("blur"); //1
-    effects.push_back("sharpen"); //2
-    effects.push_back("edgedetection"); //3
-    effects.push_back("chromaticaberration"); 
-    effects.push_back("filmgrain"); //5
-    effects.push_back("grayscale");
-    effects.push_back("invert");
-    effects.push_back("pixelation"); //8
-    //effects.push_back("gammacorrection"); rest in peace
-
-    postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/" + effects[effectIndex] + ".fs");
-
-    light = {
-        .color = {1.0f, 1.0f, 1.0f},
-        .position = {2.0f, 2.0f, 2.0f}
-    };
-
-    palette = {
-        .color1 = {0.21f, 1.0f, 1.0f},
-        .color2 = {0.32f, 0.0f, 1.0f}
-    };
-
-    fullScreenQuad.Initialize();
-
     glCreateFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     {
@@ -115,18 +85,83 @@ Scene::Scene()
 
         //cleeanup
         glBindTexture(GL_TEXTURE_2D, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+            printf("Framebuffer not complete \n");
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
+}
 
-    
+void Scene::CreateDepthBuffer()
+{
+    glCreateFramebuffers(1, &shadowFbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo);
+    {
+        //create texture
+        glGenTextures(1, &shadowDepth);
+        glBindTexture(GL_TEXTURE_2D, shadowDepth);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 800, 600, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowDepth, 0);
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
-        printf("Framebuffer not complete \n");
+        glDrawBuffer(GL_NONE);
+        glReadBuffer(GL_NONE);
+
+        //cleanup
+        //glBindTexture(GL_TEXTURE_2D, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+            printf("Depthbuffer not complete \n");
+        }
+        
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
+}
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+Scene::Scene()
+{
+    suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
+    toon = std::make_unique<ew::Shader>("assets/shaders/defaultShadowMapping.vs", "assets/shaders/toonShadowMapping.fs");
+    depth = std::make_unique<ew::Shader>("assets/shaders/depth.vs", "assets/shaders/depth.fs");
+    //load texture
+    texture = std::make_unique<ew::Texture>("assets/skull/ZAToon.png");
 
+    effectIndex = 0;
+
+    effects.push_back("none");
+    effects.push_back("blur");
+    effects.push_back("sharpen");
+    effects.push_back("edgedetection");
+    effects.push_back("chromaticaberration");
+    effects.push_back("filmgrain");
+    effects.push_back("grayscale");
+    effects.push_back("invert");
+    effects.push_back("pixelation");
+    effects.push_back("gammacorrection");
+
+    postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/" + effects[effectIndex] + ".fs");
+
+    light = {
+        .color = {1.0f, 1.0f, 1.0f},
+        .position = {2.0f, 2.0f, 2.0f}
+    };
+
+    palette = {
+        .color1 = {0.21f, 1.0f, 1.0f},
+        .color2 = {0.32f, 0.0f, 1.0f}
+    };
+
+    fullScreenQuad.Initialize();
+
+    CreateFrameBuffer();
+    CreateDepthBuffer();
     
-
+    plane.load(ew::createPlane(100.0, 100.0, 10));
 }
 
 Scene::~Scene()
@@ -145,6 +180,32 @@ glm::mat4 identity(1.0f);
 
 void Scene::Render(void)
 {
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo);
+    {
+        const auto lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+        const auto lightView = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+        const auto light_view_proj = lightProjection * lightView;
+
+
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glEnable(GL_DEPTH_TEST);
+
+        glViewport(0, 0, 800, 600);
+
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        depth->use();
+        // scene matrices
+        depth->setMat4("model", glm::mat4(1.0));
+        depth->setMat4("light_view_proj", light_view_proj);
+        toon->setMat4("light_view_proj", light_view_proj);
+
+        suzanne->draw();
+
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     //suzanne
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     {
@@ -160,9 +221,13 @@ void Scene::Render(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture->getID());
 
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, shadowDepth);
+
         toon->use();
 
         toon->setInt("zaToon", 0);
+        toon->setInt("shadowMap", 1);
 
         // scene matrices
         toon->setMat4("model", glm::mat4(1.0));
@@ -182,36 +247,19 @@ void Scene::Render(void)
 
         // draw suzanne
         suzanne->draw();
+
+        
+        
+        toon->setMat4("model", glm::translate(glm::mat4(1.0), glm::vec3(0.0, -2.0, 0.0)));
+        plane.draw();
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     { //post process pipeline
         //render fullscreen quad
-        postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/" + effects[effectIndex] + ".fs");
         postprocess->use();
         postprocess->setInt("screen", 0);
-
-        switch (effectIndex){
-            case 1:
-                postprocess->setFloat("strength", effectVars.blurStrength);
-                break;
-            case 2:
-                postprocess->setFloat("strength", effectVars.sharpenStrength);
-                break;
-            case 3:
-                postprocess->setFloat("strength", effectVars.edgeDetectStrength);
-                break;
-            case 5:
-                postprocess->setFloat("grainAmount", effectVars.grainAmount);
-                postprocess->setFloat("grainSize", effectVars.grainSize);
-                break;
-            case 8:
-                postprocess->setInt("pixels", effectVars.numPixels);
-                break;
-            default:
-                break;
-        }
 
         //fullscreen pipeline
         glDisable(GL_DEPTH_TEST);
@@ -224,6 +272,7 @@ void Scene::Render(void)
         glBindTexture(GL_TEXTURE_2D, fboTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
+    
     
 }
 
@@ -269,25 +318,8 @@ void Scene::Debug(void)
     ImGui::ColorEdit3("Color 1", &palette.color1.x);
     ImGui::ColorEdit3("Color 2", &palette.color2.x);
 
-    ImGui::SeparatorText("Post Process Effect");
-    if (ImGui::BeginCombo("Effects", effects[effectIndex].c_str())){
-        for (int i = 0; i < effects.size(); i++)
-        {
-            const bool isSelected = (effects[effectIndex] == effects[i]);
-            if (ImGui::Selectable(effects[i].c_str(), isSelected)){
-                effectIndex = i;
-            }
-        }
-        ImGui::EndCombo();
-    }
-
-    ImGui::SliderFloat("Blur Strength", &effectVars.blurStrength, 1.0, 100.0);
-    ImGui::SliderFloat("Sharpen Strength", &effectVars.sharpenStrength, 1.0, 20.0);
-    ImGui::SliderFloat("Edge Detection Strength", &effectVars.edgeDetectStrength, 1.0, 20.0);
-    ImGui::SliderInt("Pixels", &effectVars.numPixels, 256, 2048);
-    ImGui::SliderFloat("Grain Amount", &effectVars.grainAmount, 0.05, 0.5);
-    ImGui::SliderFloat("Grain Size", &effectVars.grainSize, 1.0, 20.0);
-
+    
+    
     ImGui::Image(
         (void*)(intptr_t)fboTexture,
         ImVec2(400, 300),
@@ -295,6 +327,10 @@ void Scene::Debug(void)
 
     ImGui::Image(
         (void*)(intptr_t)fboDepth,
+        ImVec2(400, 300),
+        ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Image(
+        (void*)(intptr_t)shadowDepth,
         ImVec2(400, 300),
         ImVec2(0, 1), ImVec2(1, 0));
     /* build debug ui here */

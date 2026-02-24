@@ -10,7 +10,7 @@ uniform sampler2D screen;
 
 //offsets
 //uniform float offset;
-const float strength = 1.0;
+uniform float strength;
 const float offset = 1.0 / 300.0;
 const vec2 offsets[9] = vec2[](
     vec2(-offset, offset), //top left

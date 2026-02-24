@@ -9,10 +9,8 @@ in vec2 vs_texcoord;
 
 uniform sampler2D screen;
 
-const float gamma = 2.2;
-
 void main()
 {
-    //help
-    FragColor.rgb = pow(screen.rgb, vec3(1.0 / gamma));
+    vec3 color = texture(screen, vs_texcoord).rgb;
+    FragColor = vec4(color, 1.0);
 }

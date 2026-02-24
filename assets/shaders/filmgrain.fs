@@ -9,8 +9,8 @@ in vec2 vs_texcoord;
 
 uniform sampler2D screen;
 
-const float grainAmount = 0.05;
-const float grainSize = 1.0;
+uniform float grainAmount;
+uniform float grainSize;
 
 //credit: https://godotshaders.com/shader/film-grain-shader/
 void main()

@@ -22,10 +22,12 @@ class Scene final : public batteries::Scene
 
   private:
     std::unique_ptr<ew::Model> suzanne;
-    std::unique_ptr<ew::Shader> water;
+    std::unique_ptr<ew::Shader> toon;
     std::unique_ptr<ew::Texture> texture;
 
     std::unique_ptr<ew::Shader> postprocess;
+
+    std::vector<std::string> effects;
 
     batteries::light_t light;
 
@@ -37,4 +39,5 @@ class Scene final : public batteries::Scene
     unsigned int fbo;
     unsigned int fboTexture;
     unsigned int fboDepth;
+    unsigned int effectIndex;
 };

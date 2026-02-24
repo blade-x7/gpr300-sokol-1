@@ -25,7 +25,7 @@ struct{
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    water = std::make_unique<ew::Shader>("assets/shaders/windwaker/water.vs", "assets/shaders/windwaker/water.fs");
+    toon = std::make_unique<ew::Shader>("assets/shaders/windwaker/water.vs", "assets/shaders/windwaker/water.fs");
     
     //load textures
     water128 = std::make_unique<ew::Texture>("assets/textures/windwaker/water128.png");
@@ -70,17 +70,17 @@ void Scene::Render(void)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, water128->getID());
 
-    water->use();
+    toon->use();
 
-    water->setInt("texture0", 0);
+    toon->setInt("texture0", 0);
 
     // scene matrices
-    water->setMat4("model", glm::mat4(1.0));
-    water->setMat4("view_proj", view_proj);
+    toon->setMat4("model", glm::mat4(1.0));
+    toon->setMat4("view_proj", view_proj);
 
-    water->setVec3("camera", camera.position);
-    water->setFloat("time", (float)time.absolute);
-    water->setVec3("waterColor", debug.waterColor);
+    toon->setVec3("camera", camera.position);
+    toon->setFloat("time", (float)time.absolute);
+    toon->setVec3("waterColor", debug.waterColor);
 
     // draw plane
     plane.draw();

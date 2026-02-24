@@ -3,6 +3,7 @@
 // batteries
 #include "batteries/scene.h"
 #include "batteries/lights.h"
+#include "batteries/materials.h"
 
 // ew
 #include "ew/model.h"
@@ -19,10 +20,18 @@ class Scene final : public batteries::Scene
     void Render(void);
     void Debug(void);
 
+    void CreateFrameBuffer();
+    void CreateDepthBuffer();
+
   private:
     std::unique_ptr<ew::Model> suzanne;
     std::unique_ptr<ew::Shader> toon;
     std::unique_ptr<ew::Texture> texture;
+
+    std::unique_ptr<ew::Shader> postprocess;
+    std::unique_ptr<ew::Shader> depth;
+
+    std::vector<std::string> effects;
 
     batteries::light_t light;
 
@@ -30,4 +39,14 @@ class Scene final : public batteries::Scene
       glm::vec3 color1;
       glm::vec3 color2;
     } palette;
+
+    unsigned int fbo;
+    unsigned int fboTexture;
+    unsigned int fboDepth;
+    unsigned int effectIndex;
+
+    unsigned int shadowFbo;
+    unsigned int shadowDepth;
+    
+    ew::Mesh plane;
 };

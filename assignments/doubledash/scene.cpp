@@ -25,7 +25,7 @@ struct{
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    water = std::make_unique<ew::Shader>("assets/shaders/doubledash/water.vs", "assets/shaders/doubledash/water.fs");
+    toon = std::make_unique<ew::Shader>("assets/shaders/doubledash/water.vs", "assets/shaders/doubledash/water.fs");
     
     //load textures 
     waveSpec = std::make_unique<ew::Texture>("assets/textures/doubledash/wave_spec.png");
@@ -74,19 +74,19 @@ void Scene::Render(void)
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, waveWarp->getID());
 
-    water->use();
+    toon->use();
 
-    water->setInt("waveSpec", 0);
-    water->setInt("waveTex", 1);
-    water->setInt("waveWarp", 2);
+    toon->setInt("waveSpec", 0);
+    toon->setInt("waveTex", 1);
+    toon->setInt("waveWarp", 2);
 
     // scene matrices
-    water->setMat4("model", glm::mat4(1.0));
-    water->setMat4("view_proj", view_proj);
+    toon->setMat4("model", glm::mat4(1.0));
+    toon->setMat4("view_proj", view_proj);
 
-    water->setVec3("camera", camera.position);
-    water->setFloat("time", (float)time.absolute);
-    water->setVec3("waterColor", debug.waterColor);
+    toon->setVec3("camera", camera.position);
+    toon->setFloat("time", (float)time.absolute);
+    toon->setVec3("waterColor", debug.waterColor);
 
     // draw plane
     plane.draw();
