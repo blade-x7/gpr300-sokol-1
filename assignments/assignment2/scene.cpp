@@ -52,6 +52,15 @@ struct{
     float shiny = 8.0f;
 } material;
 
+struct{
+    float blurStrength = 10.0;
+    float sharpenStrength = 1.0;
+    float edgeDetectStrength = 10.0;
+    int numPixels = 1024;
+    float grainAmount = 0.05;
+    float grainSize = 1.0;
+} effectVars;
+
 struct FrameBuffer{
     GLuint depthFbo;
     GLuint depth;
@@ -142,7 +151,7 @@ Scene::Scene()
     effects.push_back("grayscale");
     effects.push_back("invert");
     effects.push_back("pixelation");
-    effects.push_back("gammacorrection");
+    //effects.push_back("gammacorrection");
 
     postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/" + effects[effectIndex] + ".fs");
 
@@ -258,8 +267,30 @@ void Scene::Render(void)
 
     { //post process pipeline
         //render fullscreen quad
+        postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/" + effects[effectIndex] + ".fs");
         postprocess->use();
         postprocess->setInt("screen", 0);
+
+        switch (effectIndex){
+            case 1:
+                postprocess->setFloat("strength", effectVars.blurStrength);
+                break;
+            case 2:
+                postprocess->setFloat("strength", effectVars.sharpenStrength);
+                break;
+            case 3:
+                postprocess->setFloat("strength", effectVars.edgeDetectStrength);
+                break;
+            case 5:
+                postprocess->setFloat("grainAmount", effectVars.grainAmount);
+                postprocess->setFloat("grainSize", effectVars.grainSize);
+                break;
+            case 8:
+                postprocess->setInt("pixels", effectVars.numPixels);
+                break;
+            default:
+                break;
+        }
 
         //fullscreen pipeline
         glDisable(GL_DEPTH_TEST);
@@ -318,7 +349,24 @@ void Scene::Debug(void)
     ImGui::ColorEdit3("Color 1", &palette.color1.x);
     ImGui::ColorEdit3("Color 2", &palette.color2.x);
 
-    
+    ImGui::SeparatorText("Post Process Effect");
+    if (ImGui::BeginCombo("Effects", effects[effectIndex].c_str())){
+        for (int i = 0; i < effects.size(); i++)
+        {
+            const bool isSelected = (effects[effectIndex] == effects[i]);
+            if (ImGui::Selectable(effects[i].c_str(), isSelected)){
+                effectIndex = i;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::SliderFloat("Blur Strength", &effectVars.blurStrength, 1.0, 100.0);
+    ImGui::SliderFloat("Sharpen Strength", &effectVars.sharpenStrength, 1.0, 20.0);
+    ImGui::SliderFloat("Edge Detection Strength", &effectVars.edgeDetectStrength, 1.0, 20.0);
+    ImGui::SliderInt("Pixels", &effectVars.numPixels, 256, 2048);
+    ImGui::SliderFloat("Grain Amount", &effectVars.grainAmount, 0.05, 0.5);
+    ImGui::SliderFloat("Grain Size", &effectVars.grainSize, 1.0, 20.0);
     
     ImGui::Image(
         (void*)(intptr_t)fboTexture,
