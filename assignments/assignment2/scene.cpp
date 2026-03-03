@@ -10,6 +10,13 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "ew/procGen.h"
 
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
+
+struct {
+    float bias = 0.15f;
+} debug;
+
 struct FullScreenQuad{
     GLuint vao;
     GLuint vbo;
@@ -79,7 +86,7 @@ void Scene::CreateFrameBuffer()
         //create texture
         glGenTextures(1, &fboTexture);
         glBindTexture(GL_TEXTURE_2D, fboTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
@@ -87,7 +94,7 @@ void Scene::CreateFrameBuffer()
         //next texture
         glGenTextures(1, &fboDepth);
         glBindTexture(GL_TEXTURE_2D, fboDepth);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, 800, 600, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fboDepth, 0);
@@ -111,9 +118,11 @@ void Scene::CreateDepthBuffer()
         //create texture
         glGenTextures(1, &shadowDepth);
         glBindTexture(GL_TEXTURE_2D, shadowDepth);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 800, 600, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        float borderColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowDepth, 0);
@@ -151,7 +160,6 @@ Scene::Scene()
     effects.push_back("grayscale");
     effects.push_back("invert");
     effects.push_back("pixelation");
-    //effects.push_back("gammacorrection");
 
     postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/" + effects[effectIndex] + ".fs");
 
@@ -189,18 +197,17 @@ glm::mat4 identity(1.0f);
 
 void Scene::Render(void)
 {
+    const auto lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+    const auto lightView = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+    const auto light_view_proj = lightProjection * lightView;
+
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo);
     {
-        const auto lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
-        const auto lightView = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-        const auto light_view_proj = lightProjection * lightView;
-
-
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
+        glCullFace(GL_FRONT);
         glEnable(GL_DEPTH_TEST);
 
-        glViewport(0, 0, 800, 600);
+        glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
         glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -208,7 +215,6 @@ void Scene::Render(void)
         // scene matrices
         depth->setMat4("model", glm::mat4(1.0));
         depth->setMat4("light_view_proj", light_view_proj);
-        toon->setMat4("light_view_proj", light_view_proj);
 
         suzanne->draw();
 
@@ -241,6 +247,7 @@ void Scene::Render(void)
         // scene matrices
         toon->setMat4("model", glm::mat4(1.0));
         toon->setMat4("view_proj", view_proj);
+        toon->setMat4("light_proj_view", light_view_proj);
 
         toon->setVec3("camera", camera.position);
         toon->setVec3("light.position", light.position);
@@ -257,8 +264,6 @@ void Scene::Render(void)
         // draw suzanne
         suzanne->draw();
 
-        
-        
         toon->setMat4("model", glm::translate(glm::mat4(1.0), glm::vec3(0.0, -2.0, 0.0)));
         plane.draw();
     }
@@ -345,10 +350,12 @@ void Scene::Debug(void)
         ImGui::SliderFloat("Shininess", &material.shiny, 0.5f, 10.0f);
     }
 
+    //toon shader colors
     ImGui::SeparatorText("Palette");
     ImGui::ColorEdit3("Color 1", &palette.color1.x);
     ImGui::ColorEdit3("Color 2", &palette.color2.x);
 
+    //post process
     ImGui::SeparatorText("Post Process Effect");
     if (ImGui::BeginCombo("Effects", effects[effectIndex].c_str())){
         for (int i = 0; i < effects.size(); i++)

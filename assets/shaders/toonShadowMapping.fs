@@ -35,11 +35,17 @@ uniform sampler2D shadowMap;
 uniform Palette pal;
 
 float shadowCalculation(vec4 fragPosLightSpace) {
+    //perspective division
     vec3 projCoords = fragPosLightSpace.xys / fragPosLightSpace.w;
-    float shadow = 0.25;
+    projCoords = projCoords * 0.5 + 0.5;
 
-    //float closest = texture(shadow, projCoords.xy);
-    float currect = projCoords.z;
+    float depth = texture(shadowMap, projCoords.xy).r;
+
+    float closestDepth = depth;
+    float currentDepth = projCoords.z;
+
+    float bias = 0.02;
+    float shadow = ((currentDepth - bias) > closestDepth) ? 1.0 : 0.0;
 
     return shadow;
 }
