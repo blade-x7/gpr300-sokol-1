@@ -36,7 +36,7 @@ uniform Palette pal;
 
 float shadowCalculation(vec4 fragPosLightSpace) {
     //perspective division
-    vec3 projCoords = fragPosLightSpace.xys / fragPosLightSpace.w;
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
 
     float depth = texture(shadowMap, projCoords.xy).r;
