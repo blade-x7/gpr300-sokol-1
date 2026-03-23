@@ -33,6 +33,7 @@ uniform Material material;
 uniform sampler2D zaToon;
 uniform sampler2D shadowMap;
 uniform Palette pal;
+uniform float bias;
 
 float shadowCalculation(vec4 fragPosLightSpace) {
     //perspective division
@@ -44,7 +45,6 @@ float shadowCalculation(vec4 fragPosLightSpace) {
     float closestDepth = depth;
     float currentDepth = projCoords.z;
 
-    float bias = 0.02;
     float shadow = ((currentDepth - bias) > closestDepth) ? 1.0 : 0.0;
 
     return shadow;
