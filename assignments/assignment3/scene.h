@@ -20,16 +20,23 @@ class Scene final : public batteries::Scene
     void Render(void);
     void Debug(void);
 
+    void CreateFrameBuffer();
+    void CreateDepthBuffer();
+    void CacheInstanceData();
+
   private:
     std::unique_ptr<ew::Model> suzanne;
     std::unique_ptr<ew::Shader> toon;
     std::unique_ptr<ew::Texture> texture;
 
     std::unique_ptr<ew::Shader> postprocess;
+    std::unique_ptr<ew::Shader> depth;
 
     std::vector<std::string> effects;
 
     batteries::light_t light;
+
+    std::vector<glm::mat4> modelInstances;
 
     struct{
       glm::vec3 color1;
@@ -40,4 +47,12 @@ class Scene final : public batteries::Scene
     unsigned int fboTexture;
     unsigned int fboDepth;
     unsigned int effectIndex;
+
+    unsigned int shadowFbo;
+    unsigned int shadowDepth;
+
+    //instanced buffer
+    unsigned int instancedBuffer;
+    
+    ew::Mesh plane;
 };

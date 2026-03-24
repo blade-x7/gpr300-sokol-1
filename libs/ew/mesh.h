@@ -27,9 +27,9 @@ namespace ew {
 	class Mesh {
 	public:
 		Mesh() {};
-		Mesh(const MeshData& meshData);
-		void load(const MeshData& meshData);
-		void draw(DrawMode drawMode = DrawMode::TRIANGLES)const;
+		Mesh(const MeshData& meshData, bool instanced = false);
+		void load(const MeshData& meshData, bool instanced = false);
+		void draw(DrawMode drawMode = DrawMode::TRIANGLES, int count = 1)const;
 		inline int getNumVertices()const { return m_numVertices; }
 		inline int getNumIndices()const { return m_numIndices; }
 	private:

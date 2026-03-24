@@ -8,6 +8,17 @@
 
 #include "imguizmo/ImGuizmo.h"
 #include <glm/gtc/type_ptr.hpp>
+#include "ew/procGen.h"
+
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
+
+struct {
+    float bias = 0.02f;
+
+    float width = 3.0f;
+    float spacing = 3.0f;
+} debug;
 
 struct FullScreenQuad{
     GLuint vao;
@@ -60,25 +71,114 @@ struct{
     float grainSize = 1.0;
 } effectVars;
 
+struct FrameBuffer{
+    GLuint depthFbo;
+    GLuint depth;
+
+    void Initialize()
+    {
+        
+    }
+} shadowBuffer;
+
+void Scene::CreateFrameBuffer()
+{
+    glCreateFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    {
+        //create texture
+        glGenTextures(1, &fboTexture);
+        glBindTexture(GL_TEXTURE_2D, fboTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
+
+        //next texture
+        glGenTextures(1, &fboDepth);
+        glBindTexture(GL_TEXTURE_2D, fboDepth);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fboDepth, 0);
+
+        //cleeanup
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+            printf("Framebuffer not complete \n");
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+}
+
+void Scene::CreateDepthBuffer()
+{
+    glCreateFramebuffers(1, &shadowFbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo);
+    {
+        //create texture
+        glGenTextures(1, &shadowDepth);
+        glBindTexture(GL_TEXTURE_2D, shadowDepth);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowDepth, 0);
+
+        glDrawBuffer(GL_NONE);
+        glReadBuffer(GL_NONE);
+
+        //cleanup
+        //glBindTexture(GL_TEXTURE_2D, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+            printf("Depthbuffer not complete \n");
+        }
+        
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+}
+
+void Scene::CacheInstanceData(){
+    auto size = (debug.width - (-debug.width) + 1) * (debug.width - (-debug.width) + 1);
+    modelInstances.resize(size);
+    auto i = 0;
+    for (auto x = -debug.width; x <= debug.width; x++){
+        for (auto y = -debug.spacing; y <= debug.spacing; y++){
+            auto position = glm::vec3(x * debug.spacing, 0, y * debug.spacing);
+            auto matrix = glm::translate(glm::mat4(1.0f), position);
+
+            toon->setMat4("model", matrix);
+            suzanne->draw();
+
+            modelInstances[i] = matrix;
+            i++;
+        }
+    }
+}
+
 Scene::Scene()
 {
-    suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    toon = std::make_unique<ew::Shader>("assets/shaders/default.vs", "assets/shaders/toon.fs");
+    suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj", true);
+    toon = std::make_unique<ew::Shader>("assets/shaders/defaultShadowMappingInstance.vs", "assets/shaders/toonShadowMapping.fs");
+    depth = std::make_unique<ew::Shader>("assets/shaders/depth.vs", "assets/shaders/depth.fs");
     //load texture
     texture = std::make_unique<ew::Texture>("assets/skull/ZAToon.png");
 
     effectIndex = 0;
 
     effects.push_back("none");
-    effects.push_back("blur"); //1
-    effects.push_back("sharpen"); //2
-    effects.push_back("edgedetection"); //3
-    effects.push_back("chromaticaberration"); 
-    effects.push_back("filmgrain"); //5
+    effects.push_back("blur");
+    effects.push_back("sharpen");
+    effects.push_back("edgedetection");
+    effects.push_back("chromaticaberration");
+    effects.push_back("filmgrain");
     effects.push_back("grayscale");
     effects.push_back("invert");
-    effects.push_back("pixelation"); //8
-    //effects.push_back("gammacorrection"); rest in peace
+    effects.push_back("pixelation");
 
     postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/" + effects[effectIndex] + ".fs");
 
@@ -94,39 +194,15 @@ Scene::Scene()
 
     fullScreenQuad.Initialize();
 
-    glCreateFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    {
-        //create texture
-        glGenTextures(1, &fboTexture);
-        glBindTexture(GL_TEXTURE_2D, fboTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
-
-        //next texture
-        glGenTextures(1, &fboDepth);
-        glBindTexture(GL_TEXTURE_2D, fboDepth);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, 800, 600, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fboDepth, 0);
-
-        //cleeanup
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
-
+    CreateFrameBuffer();
+    CreateDepthBuffer();
+    CacheInstanceData();
     
+    plane.load(ew::createPlane(100.0, 100.0, 10));
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
-        printf("Framebuffer not complete \n");
-    }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    
-
+    //glGenBuffers(1, &instancedBuffer);
+    //glBindBuffer(GL_ARRAY_BUFFER, instancedBuffer);
+    //glBufferData(GL_ARRAY_BUFFER, 100 * sizeof(glm::mat4), &modelInstances[0], GL_STREAM_DRAW);
 }
 
 Scene::~Scene()
@@ -145,6 +221,37 @@ glm::mat4 identity(1.0f);
 
 void Scene::Render(void)
 {
+    const auto lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+    const auto lightView = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+    const auto light_view_proj = lightProjection * lightView;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo);
+    {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glEnable(GL_DEPTH_TEST);
+
+        glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        depth->use();
+        // scene matrices
+        depth->setMat4("model", glm::mat4(1.0));
+        depth->setMat4("light_view_proj", light_view_proj);
+
+        auto i = 0;
+        for (auto x = -debug.width; x <= debug.width; x++){
+            for (auto y = -debug.spacing; y <= debug.spacing; y++){
+                //depth->setMat4("model", modelInstances[i]);
+                suzanne->draw();
+                i++;
+            }
+        }
+
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     //suzanne
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     {
@@ -160,13 +267,18 @@ void Scene::Render(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture->getID());
 
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, shadowDepth);
+
         toon->use();
 
         toon->setInt("zaToon", 0);
+        toon->setInt("shadowMap", 1);
 
         // scene matrices
         toon->setMat4("model", glm::mat4(1.0));
         toon->setMat4("view_proj", view_proj);
+        toon->setMat4("light_proj_view", light_view_proj);
 
         toon->setVec3("camera", camera.position);
         toon->setVec3("light.position", light.position);
@@ -179,9 +291,22 @@ void Scene::Render(void)
 
         toon->setVec3("pal.color1", palette.color1);
         toon->setVec3("pal.color2", palette.color2);
+        toon->setFloat("bias", debug.bias);
+
+        auto i = 0;
+        for (auto x = -debug.width; x <= debug.width; x++){
+            for (auto y = -debug.spacing; y <= debug.spacing; y++){
+                toon->setMat4("model", modelInstances[i]);
+                suzanne->draw(100);
+                i++;
+            }
+        }
 
         // draw suzanne
-        suzanne->draw();
+        //suzanne->draw();
+
+        //toon->setMat4("model", glm::translate(glm::mat4(1.0), glm::vec3(0.0, -2.0, 0.0)));
+        //plane.draw();
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -225,6 +350,7 @@ void Scene::Render(void)
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
     
+    
 }
 
 void Scene::Debug(void)
@@ -265,10 +391,21 @@ void Scene::Debug(void)
         ImGui::SliderFloat("Shininess", &material.shiny, 0.5f, 10.0f);
     }
 
+    ImGui::SliderFloat("Shadow Bias", &debug.bias, 0.0f, 0.05f);
+    
+    if (ImGui::SliderFloat("Width", &debug.width, 1.0f, 100.0f)){
+        CacheInstanceData();
+    }
+    if (ImGui::SliderFloat("Spacing", &debug.spacing, 1.0f, 100.0f)){
+        CacheInstanceData();
+    }
+
+    //toon shader colors
     ImGui::SeparatorText("Palette");
     ImGui::ColorEdit3("Color 1", &palette.color1.x);
     ImGui::ColorEdit3("Color 2", &palette.color2.x);
 
+    //post process
     ImGui::SeparatorText("Post Process Effect");
     if (ImGui::BeginCombo("Effects", effects[effectIndex].c_str())){
         for (int i = 0; i < effects.size(); i++)
@@ -287,7 +424,7 @@ void Scene::Debug(void)
     ImGui::SliderInt("Pixels", &effectVars.numPixels, 256, 2048);
     ImGui::SliderFloat("Grain Amount", &effectVars.grainAmount, 0.05, 0.5);
     ImGui::SliderFloat("Grain Size", &effectVars.grainSize, 1.0, 20.0);
-
+    
     ImGui::Image(
         (void*)(intptr_t)fboTexture,
         ImVec2(400, 300),
@@ -295,6 +432,10 @@ void Scene::Debug(void)
 
     ImGui::Image(
         (void*)(intptr_t)fboDepth,
+        ImVec2(400, 300),
+        ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Image(
+        (void*)(intptr_t)shadowDepth,
         ImVec2(400, 300),
         ImVec2(0, 1), ImVec2(1, 0));
     /* build debug ui here */
