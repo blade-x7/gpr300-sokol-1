@@ -173,7 +173,7 @@ struct Material
 struct
 {
     int width = 1;
-    float light_radius = 2.5f;
+    float light_radius = 1.5f;
     bool draw_light_volume = false;
 } debug;
 
@@ -186,7 +186,7 @@ Scene::Scene()
     lightsphere = std::make_unique<ew::Shader>("assets/shaders/deferred/light.vs", "assets/shaders/deferred/light.fs");
     
 
-    sphere.load(ew::createSphere(1.0f, 8));
+    sphere.load(ew::createSphere(debug.light_radius, 8));
 
     ambient = {
         .intensity = 1.0f,
@@ -307,12 +307,13 @@ void Scene::Render(void)
         blinnphong->setInt("g_albedo", 2);
         blinnphong->setInt("g_material", 3);
 
-        for (int i = 0; i < light_instances.size(); i++)
+        for (int i = 0; i < light_instances.size(); i++) //first call
         {
             auto sphereMat4 = glm::translate(glm::mat4(1.0f), light_instances[i].position);
             blinnphong->setMat4("model", sphereMat4);
             blinnphong->setVec3("light.position", light_instances[i].position);
             blinnphong->setVec3("light.color", light_instances[i].color);
+            blinnphong->setFloat("light.radius", debug.light_radius);
         
             sphere.draw();
         }
@@ -322,7 +323,9 @@ void Scene::Render(void)
     { // render fullscreen quad
         noprocess->use();
 
-        noprocess->setInt("screen", 0);
+        //noprocess->setInt("screen", 0);
+        noprocess->setInt("albedo", 0);
+        noprocess->setInt("blinnphong", 1);
 
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
@@ -334,7 +337,11 @@ void Scene::Render(void)
 
         glBindVertexArray(fullscreen_quad.vao);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, framebuffer.position);
+        glBindTexture(GL_TEXTURE_2D,framebuffer.albedo);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, lightvolumebuffer.color);
+        
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
@@ -356,7 +363,7 @@ void Scene::Render(void)
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
-        for (int i = 0; i < light_instances.size(); i++)
+        for (int i = 0; i < light_instances.size(); i++) //second call?
         {
             auto sphereMat4 = glm::translate(glm::mat4(1.0f), light_instances[i].position);
             lightsphere->setMat4("model", sphereMat4);
@@ -384,7 +391,9 @@ void Scene::Debug(void)
     if (ImGui::CollapsingHeader("Lights"))
     {
         ImGui::Checkbox("Draw Volumes", &debug.draw_light_volume);
-        ImGui::SliderFloat("Light Radisu", &debug.light_radius, 1.0f, 100.0f);
+        if (ImGui::SliderFloat("Light Radius", &debug.light_radius, 0.25f, 100.0f)){
+            sphere.load(ew::createSphere(debug.light_radius, 8));
+        }
     }
 
     if (ImGui::CollapsingHeader("Material"))

@@ -9,8 +9,11 @@ layout(location = 2) in vec2 in_texcoord;
 uniform mat4 view_proj;
 uniform mat4 model;
 
+out vec2 vs_texcoord;
+
 void main()
 {
+  vs_texcoord = in_texcoord;
   vec4 worldPosition = model * vec4(in_position, 1.0);
   gl_Position = view_proj * worldPosition;
 }
