@@ -1,0 +1,24 @@
+#version 410
+
+precision mediump float;
+
+out vec4 FragColor;
+
+// varyings
+in vec3 vs_position;
+in vec3 vs_normal;
+in vec2 vs_texcoord;
+
+//uniform sampler2D reflection;
+//uniform sampler2D refraction;
+//uniform sampler2D depth;
+
+vec3 effect() {
+  return normalize(vs_position.rgb);
+}
+
+void main()
+{
+  vec3 color = effect();
+  FragColor = vec4(color, 1.0);
+}

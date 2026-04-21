@@ -60,6 +60,7 @@ namespace batteries
     void Update(float dt);
     void Event(const sapp_event *e);
     void Debug(void);
+    void CameraReflect(float dt);
 
   private:
     Camera *camera;

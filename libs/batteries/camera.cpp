@@ -100,6 +100,12 @@ namespace batteries
     }
     }
   }
+  
+  void CameraController::CameraReflect(float dt){
+    pitch = -pitch;
+    camera->center = {0.0f, 0.0f, 0.0f};
+    camera->position = camera->center + euclidean(yaw, pitch) * distance;
+  }
 
   void CameraController::Event(const sapp_event *e)
   {
