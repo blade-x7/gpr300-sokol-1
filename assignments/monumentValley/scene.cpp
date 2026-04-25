@@ -185,6 +185,10 @@ void Scene::ReflectionPass(const glm::mat4x4 view_proj, ew::Model* model, glm::v
         water->setVec4("plane", clipPlane);
 
         model->draw();
+
+        //distance = 2 * (camera.position.y); //add water height variable
+        //camera.position.y -= distance;
+        cameracontroller.CameraReflect((float)time.absolute);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -245,8 +249,16 @@ void Scene::Render(void)
         suzanne->draw();
     }
     
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, reflection.color0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, refraction.color0);
 
     water->use();
+
+    water->setInt("reflection", 0);
+    water->setInt("refraction", 1);
 
     water->setMat4("model", glm::mat4(1.0));
     water->setMat4("view_proj", view_proj);
