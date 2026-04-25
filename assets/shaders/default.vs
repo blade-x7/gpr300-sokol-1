@@ -1,4 +1,4 @@
-#version 300 es
+#version 410
 
 // attributes
 layout(location = 0) in vec3 in_position;
@@ -8,6 +8,7 @@ layout(location = 2) in vec2 in_texcoord;
 // uniforms
 uniform mat4 view_proj;
 uniform mat4 model;
+uniform vec4 plane;
 
 // varyings
 out vec3 vs_position;
@@ -16,6 +17,8 @@ out vec2 vs_texcoord;
 
 void main()
 {
+  gl_ClipDistance[0] = dot(vec4(in_position, 1.0), plane);
+
   vs_position = in_position;
   vs_normal = transpose(inverse(mat3(model))) * in_normal;
   vs_texcoord = in_texcoord;

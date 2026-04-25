@@ -171,7 +171,7 @@ void Scene::ReflectionPass(const glm::mat4x4 view_proj, ew::Model* model, glm::v
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        water->use();
+        defaultShader->use();
 
         float distance = 2 * (camera.position.y); //add water height variable
         camera.position.y -= distance;
@@ -179,10 +179,9 @@ void Scene::ReflectionPass(const glm::mat4x4 view_proj, ew::Model* model, glm::v
         const auto viewProj = camera.Projection() * camera.View();
 
         // scene matrices
-        water->setMat4("model", glm::mat4(1.0));
-        water->setMat4("view_proj", viewProj);
-        water->setFloat("time", (float)time.absolute);
-        water->setVec4("plane", clipPlane);
+        defaultShader->setMat4("model", glm::mat4(1.0));
+        defaultShader->setMat4("view_proj", viewProj);
+        defaultShader->setVec4("plane", clipPlane);
 
         model->draw();
 
@@ -200,18 +199,16 @@ void Scene::RefractionPass(const glm::mat4x4 view_proj, ew::Model* model, glm::v
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glEnable(GL_DEPTH_TEST);
-        
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        water->use();
+        defaultShader->use();
 
         // scene matrices
-        water->setMat4("model", glm::mat4(1.0));
-        water->setMat4("view_proj", view_proj);
-        water->setFloat("time", (float)time.absolute);
-        water->setVec4("plane", clipPlane);
+        defaultShader->setMat4("model", glm::mat4(1.0));
+        defaultShader->setMat4("view_proj", view_proj);
+        defaultShader->setVec4("plane", clipPlane);
 
         model->draw();
     }
@@ -225,12 +222,12 @@ void Scene::Render(void)
     const auto lightView = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
     const auto light_view_proj = lightProjection * lightView;
     const auto view_proj = camera.Projection() * camera.View();
-
+        
     glEnable(GL_CLIP_DISTANCE0);
-
+    
     ReflectionPass(view_proj, suzanne.get(), glm::vec4(0, 1, 0, 0)); //add water height variable
     RefractionPass(view_proj, suzanne.get(), glm::vec4(0, -1, 0, 0)); //add water height variable
-    
+
     glDisable(GL_CLIP_DISTANCE0);
     
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
