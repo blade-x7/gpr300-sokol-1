@@ -9,21 +9,21 @@ layout(location = 2) in vec2 in_texcoord;
 uniform mat4 view_proj;
 uniform mat4 model;
 uniform float time;
+uniform vec3 cameraPos;
 
 // varyings
 out vec3 vs_position;
 out vec3 vs_normal;
 out vec2 vs_texcoord;
 out vec4 clipSpace;
-
-const float waveLen = 0.75;
-const float waveAmp = 0.75;
+out vec3 toCameraVector;
 
 void main()
 {
   vs_position = in_position;
   vs_normal = transpose(inverse(mat3(model))) * in_normal;
   vs_texcoord = in_texcoord;
-  clipSpace = view_proj * model * vec4(in_position.x, 0.0, in_position.y, 1.0);
-  gl_Position = view_proj * model * vec4(in_position, 1.0);
+  clipSpace = view_proj * model * vec4(in_position, 1.0);
+  toCameraVector = normalize(cameraPos - in_position);
+  gl_Position = clipSpace;
 }

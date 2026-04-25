@@ -168,7 +168,7 @@ void Scene::ReflectionPass(const glm::mat4x4 view_proj, ew::Model* model, glm::v
         glCullFace(GL_BACK);
         glEnable(GL_DEPTH_TEST);
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         defaultShader->use();
@@ -200,7 +200,7 @@ void Scene::RefractionPass(const glm::mat4x4 view_proj, ew::Model* model, glm::v
         glCullFace(GL_BACK);
         glEnable(GL_DEPTH_TEST);
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         defaultShader->use();
@@ -224,7 +224,7 @@ void Scene::Render(void)
     const auto view_proj = camera.Projection() * camera.View();
         
     glEnable(GL_CLIP_DISTANCE0);
-    
+
     ReflectionPass(view_proj, suzanne.get(), glm::vec4(0, 1, 0, 0)); //add water height variable
     RefractionPass(view_proj, suzanne.get(), glm::vec4(0, -1, 0, 0)); //add water height variable
 
@@ -252,14 +252,20 @@ void Scene::Render(void)
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, refraction.color0);
 
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, refraction.depth);
+
     water->use();
 
     water->setInt("reflection", 0);
     water->setInt("refraction", 1);
+    water->setInt("depthTexture", 2);
 
     water->setMat4("model", glm::mat4(1.0));
     water->setMat4("view_proj", view_proj);
     water->setFloat("time", (float)time.absolute);
+    water->setVec3("cameraPos", camera.position);
+    water->setVec2("nearFarPlanes", glm::vec2(0.0, 20.0));
 
 
     plane.draw();
