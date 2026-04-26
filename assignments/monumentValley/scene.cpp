@@ -142,7 +142,7 @@ Scene::Scene()
     refraction.Initialize();
 
     
-    plane.load(ew::createPlane(100.0, 100.0, 10));
+    plane.load(ew::createPlane(100.0, 100.0, 10)); //last number is subdivisions
 }
 
 Scene::~Scene()
@@ -265,7 +265,7 @@ void Scene::Render(void)
     water->setMat4("view_proj", view_proj);
     water->setFloat("time", (float)time.absolute);
     water->setVec3("cameraPos", camera.position);
-    water->setVec2("nearFarPlanes", glm::vec2(0.0, 20.0));
+    water->setVec2("nearFarPlanes", glm::vec2(0.0, 10.0));
 
 
     plane.draw();

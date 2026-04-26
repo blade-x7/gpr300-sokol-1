@@ -9,6 +9,7 @@ in vec3 vs_position;
 in vec3 vs_normal;
 in vec2 vs_texcoord;
 in vec4 clipSpace;
+in vec4 clipSpaceGrid;
 in vec3 toCameraVector;
 
 uniform sampler2D reflection;
@@ -50,11 +51,18 @@ vec4 applyMurkiness(vec4 refractCol, float waterDep){
   return mix(refractCol, waterColor, murkiness);
 }
 
+vec2 clipSpaceToTexCoords(vec4 cs){
+  vec2 ndc = (cs.xy/cs.w)/2.0 + 0.5;
+  return clamp(ndc, 0.002, 0.998);
+}
+
 void main()
 {
-  vec2 ndc = (clipSpace.xy/clipSpace.w)/2.0 + 0.5;
-  vec2 reflectCoords = vec2(ndc.x, -ndc.y);
-  vec2 refractCoords = vec2(ndc.x, ndc.y);
+  vec2 ndc = clipSpaceToTexCoords(clipSpace);
+  vec2 ndcGrid = clipSpaceToTexCoords(clipSpaceGrid);
+
+  vec2 reflectCoords = vec2(ndcGrid.x, -ndcGrid.y);
+  vec2 refractCoords = vec2(ndcGrid.x, ndcGrid.y);
   float waterDepth = calculateWaterDepth(ndc);
 
   vec4 reflectColor = texture(reflection, reflectCoords);
