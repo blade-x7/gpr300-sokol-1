@@ -32,9 +32,9 @@ uniform float specIntensity;
 
 uniform vec4 waterColor;
 float edgeSoftness = 1.0;
-float minBlueness = 0.4;
-float maxBlueness = 0.75;
-float murkyDepth = 15.0;
+uniform float minBlueness;
+uniform float maxBlueness;
+uniform float murkyDepth;
 
 float speed = 0.1;
 

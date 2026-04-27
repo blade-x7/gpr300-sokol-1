@@ -28,6 +28,10 @@ struct {
     float waveAmplitude = 0.75;
     float waveLength = 0.75;
     float waveSpeed = 0.5;
+
+    float minBlue = 0.4;
+    float maxBlue = 0.75;
+    float murkyDepth = 15.0;
 } debug;
 
 struct FullScreenQuad{
@@ -278,6 +282,10 @@ void Scene::Render(void)
     water->setVec3("light.color", light.color);
     water->setVec3("light.position", light.position);
 
+    water->setFloat("minBlueness", debug.minBlue);
+    water->setFloat("maxBlueness", debug.maxBlue);
+    water->setFloat("murkyDepth", debug.murkyDepth);
+
     plane.draw();
 }
 
@@ -319,7 +327,11 @@ void Scene::Debug(void)
 
     ImGui::SliderFloat("Wave Scale", &debug.waveScale, 0.1, 15.0);
     ImGui::SliderFloat("Wave Specular Intensity", &debug.waveSpecIntensity, 0.1, 1.0);
-    
+
+    ImGui::SliderFloat("Min Blueness", &debug.minBlue, 0.01, 1.0);
+    ImGui::SliderFloat("Max Blueness", &debug.maxBlue, 0.01, 1.0);
+    ImGui::SliderFloat("Murky Depth", &debug.murkyDepth, 1.0, 30.0);
+
     ImGui::Image(
         (void*)(intptr_t)reflection.color0,
         ImVec2(400, 300),
