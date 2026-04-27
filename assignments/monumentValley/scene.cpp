@@ -23,7 +23,7 @@ struct {
 
     glm::vec4 waterColor = glm::vec4(0.0, 0.6, 1.0, 1.0);
     float waveScale = 5.0;
-    float waveSpecIntensity = 0.5;
+    float waveSpecIntensity = 0.25;
 
     float waveAmplitude = 0.75;
     float waveLength = 0.75;
