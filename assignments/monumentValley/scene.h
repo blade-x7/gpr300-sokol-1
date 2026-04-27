@@ -37,13 +37,14 @@ class Scene final : public batteries::Scene
     void RefractionPass(const glm::mat4x4 view_proj, ew::Model* model, glm::vec4 clipPlane);
 
     std::unique_ptr<ew::Model> suzanne;
-    std::unique_ptr<ew::Shader> toon;
-    std::unique_ptr<ew::Texture> texture;
 
     std::unique_ptr<ew::Shader> water;
     std::unique_ptr<ew::Shader> defaultShader;
     std::unique_ptr<ew::Shader> postprocess;
     std::unique_ptr<ew::Shader> depth;
+
+    std::unique_ptr<ew::Texture> waveWarp;
+    std::unique_ptr<ew::Texture> waveSpec;
 
     std::vector<std::string> effects;
 

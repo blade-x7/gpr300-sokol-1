@@ -20,6 +20,14 @@ struct {
     float spacing = 3.0f;
     
     glm::vec4 clipPlane = glm::vec4(0, -1, 0, 0.25f);
+
+    glm::vec4 waterColor = glm::vec4(0.0, 0.6, 1.0, 1.0);
+    float waveScale = 5.0;
+    float waveSpecIntensity = 0.5;
+
+    float waveAmplitude = 0.75;
+    float waveLength = 0.75;
+    float waveSpeed = 0.5;
 } debug;
 
 struct FullScreenQuad{
@@ -94,7 +102,7 @@ void FrameBuffer::Initialize()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
 
-        //cleeanup
+        //cleanup
         glBindTexture(GL_TEXTURE_2D, 0);
 
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
@@ -113,28 +121,12 @@ Scene::Scene()
     water = std::make_unique<ew::Shader>("assets/shaders/monumentValleyWater.vs", "assets/shaders/monumentValleyWater.fs");
     defaultShader = std::make_unique<ew::Shader>("assets/shaders/default.vs", "assets/shaders/default.fs");
 
-    effectIndex = 0;
-
-    effects.push_back("none");
-    effects.push_back("blur");
-    effects.push_back("sharpen");
-    effects.push_back("edgedetection");
-    effects.push_back("chromaticaberration");
-    effects.push_back("filmgrain");
-    effects.push_back("grayscale");
-    effects.push_back("invert");
-    effects.push_back("pixelation");
-
-    postprocess = std::make_unique<ew::Shader>("assets/shaders/fullscreen.vs", "assets/shaders/" + effects[effectIndex] + ".fs");
+    waveWarp = std::make_unique<ew::Texture>("assets/textures/doubledash/wave_warp.png");
+    waveSpec = std::make_unique<ew::Texture>("assets/textures/doubledash/wave_spec.png");
 
     light = {
         .color = {1.0f, 1.0f, 1.0f},
-        .position = {2.0f, 2.0f, 2.0f}
-    };
-
-    palette = {
-        .color1 = {0.21f, 1.0f, 1.0f},
-        .color2 = {0.32f, 0.0f, 1.0f}
+        .position = {2.0f, 37.0f, 2.0f}
     };
 
     fullScreenQuad.Initialize();
@@ -142,7 +134,7 @@ Scene::Scene()
     refraction.Initialize();
 
     
-    plane.load(ew::createPlane(100.0, 100.0, 10)); //last number is subdivisions
+    plane.load(ew::createPlane(200.0, 200.0, 20)); //last number is subdivisions
 }
 
 Scene::~Scene()
@@ -173,20 +165,19 @@ void Scene::ReflectionPass(const glm::mat4x4 view_proj, ew::Model* model, glm::v
 
         defaultShader->use();
 
-        float distance = 2 * (camera.position.y); //add water height variable
+        //reflect camera
+        float distance = 2 * (camera.position.y);
         camera.position.y -= distance;
         cameracontroller.CameraReflect((float)time.absolute);
         const auto viewProj = camera.Projection() * camera.View();
 
-        // scene matrices
         defaultShader->setMat4("model", glm::mat4(1.0));
         defaultShader->setMat4("view_proj", viewProj);
         defaultShader->setVec4("plane", clipPlane);
 
         model->draw();
 
-        //distance = 2 * (camera.position.y); //add water height variable
-        //camera.position.y -= distance;
+        //unreflect camera
         cameracontroller.CameraReflect((float)time.absolute);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -246,6 +237,7 @@ void Scene::Render(void)
         suzanne->draw();
     }
     
+    //bind textures
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, reflection.color0);
 
@@ -255,18 +247,36 @@ void Scene::Render(void)
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, refraction.depth);
 
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, waveWarp->getID());
+
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, waveSpec->getID());
+
     water->use();
 
     water->setInt("reflection", 0);
     water->setInt("refraction", 1);
     water->setInt("depthTexture", 2);
+    water->setInt("waveWarp", 3);
+    water->setInt("waveSpec", 4);
 
     water->setMat4("model", glm::mat4(1.0));
     water->setMat4("view_proj", view_proj);
     water->setFloat("time", (float)time.absolute);
     water->setVec3("cameraPos", camera.position);
-    water->setVec2("nearFarPlanes", glm::vec2(0.0, 10.0));
+    
+    water->setFloat("waveAmp", debug.waveAmplitude);
+    water->setFloat("waveLength", debug.waveLength);
+    water->setFloat("waveSpeed", debug.waveLength);
 
+    water->setVec4("waterColor", debug.waterColor);
+    water->setFloat("waveTime", (float)time.absolute);
+    water->setVec2("nearFarPlanes", glm::vec2(0.0, 10.0));
+    water->setFloat("scale", debug.waveScale);
+    water->setFloat("specIntensity", debug.waveSpecIntensity);
+    water->setVec3("light.color", light.color);
+    water->setVec3("light.position", light.position);
 
     plane.draw();
 }
@@ -279,7 +289,6 @@ void Scene::Debug(void)
     ImGuizmo::BeginFrame();
     ImGuizmo::SetDrawlist(ImGui::GetBackgroundDrawList());
     ImGuizmo::SetRect(0, 0, ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
-    //ImGuizmo::DrawGrid(&view[0][0], &proj[0][0], glm::value_ptr(identity), 10.0f); begone grid
 
     auto light_matrix = glm::translate(glm::mat4(1.0f), light.position);
     ImGuizmo::Manipulate(
@@ -302,21 +311,14 @@ void Scene::Debug(void)
     ImGui::SliderFloat("Time Factor", &time.factor, 0.0f, 10.0f);
     ImGui::ColorEdit3("Light Color", glm::value_ptr(light.color));
 
-    ImGui::SliderFloat("Clip Plane", &debug.clipPlane.w, -20.0f, 20.0f);
+    ImGui::ColorEdit4("Water Color", glm::value_ptr(debug.waterColor));
 
-    if (ImGui::CollapsingHeader("Material")){
-        ImGui::SliderFloat("Ambient", &material.ambient, 0.0f, 1.0f);
-        ImGui::SliderFloat("Diffuse", &material.diffuse, 0.0f, 1.0f);
-        ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
-        ImGui::SliderFloat("Shininess", &material.shiny, 0.5f, 10.0f);
-    }
+    ImGui::SliderFloat("Wave Amplitude", &debug.waveAmplitude, 0.1, 20.0);
+    ImGui::SliderFloat("Wave Length", &debug.waveLength, 0.1, 20.0);
+    ImGui::SliderFloat("Wave Speed", &debug.waveSpeed, 0.01, 5.0);
 
-    ImGui::SliderFloat("Shadow Bias", &debug.bias, 0.0f, 0.05f);
-
-    //toon shader colors
-    ImGui::SeparatorText("Palette");
-    ImGui::ColorEdit3("Color 1", &palette.color1.x);
-    ImGui::ColorEdit3("Color 2", &palette.color2.x);
+    ImGui::SliderFloat("Wave Scale", &debug.waveScale, 0.1, 15.0);
+    ImGui::SliderFloat("Wave Specular Intensity", &debug.waveSpecIntensity, 0.1, 1.0);
     
     ImGui::Image(
         (void*)(intptr_t)reflection.color0,
